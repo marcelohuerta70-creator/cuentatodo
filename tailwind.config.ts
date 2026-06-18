@@ -13,6 +13,6 @@ const config: Config = {
     },
   },
   plugins: [],
-  darkMode: 'never',
+  darkMode: false,
 }
 export default config
