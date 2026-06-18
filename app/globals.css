@@ -37,10 +37,14 @@
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
   font-family: var(--font-fredoka), sans-serif;
   overflow-x: hidden;
+}
+
+html {
+  color-scheme: light !important;
 }
 
 /* Comic bubble/card style */

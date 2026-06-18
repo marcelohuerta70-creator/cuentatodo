@@ -22,9 +22,10 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${fredoka.variable} h-full antialiased`}
+      className={`${fredoka.variable} h-full antialiased light`}
+      style={{ colorScheme: 'light' }}
     >
-      <body className="min-h-full flex flex-col font-sans bg-[#0b0e17] text-zinc-100 relative">
+      <body className="min-h-full flex flex-col font-sans bg-[#0b0e17] text-white relative" style={{ color: '#f4f6fa' }}>
         {/* Emoji Background Collage */}
         <EmojiBackground />
         
