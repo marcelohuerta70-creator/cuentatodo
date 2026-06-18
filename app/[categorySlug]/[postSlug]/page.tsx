@@ -149,7 +149,7 @@ export default function PostPage({ params }: PageProps) {
         tipo: type,
       });
 
-      setCooldown(cooldownKey, Date.now());
+      setCooldown(cooldownKey);
       const reactions = await getReaccionesCount(post.id);
       setReactionCounts(reactions);
     } catch (err) {
