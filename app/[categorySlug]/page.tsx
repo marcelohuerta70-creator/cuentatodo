@@ -152,7 +152,7 @@ export default function CategoryPage({ params }: PageProps) {
 
       if (created) {
         // Establecer cooldown
-        setCooldown('post', Date.now());
+        setCooldown('post');
 
         // Limpiar formulario
         setTitle('');
