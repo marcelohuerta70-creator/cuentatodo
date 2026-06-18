@@ -156,61 +156,61 @@ export const MOCK_COMENTARIOS: Record<string, Comentario[]> = {
 export const MOCK_EMOJIS_ACCENTS: Record<string, { border: string; text: string; bg: string; shadow: string }> = {
   'chistes': {
     border: 'border-yellow-400 hover:border-yellow-500',
-    text: 'text-zinc-900',
+    text: 'text-white',
     bg: 'bg-white/70',
     shadow: 'shadow-zinc-200/50'
   },
   'confesiones': {
     border: 'border-purple-400 hover:border-purple-500',
-    text: 'text-zinc-900',
+    text: 'text-white',
     bg: 'bg-white/70',
     shadow: 'shadow-zinc-200/50'
   },
   'historias': {
     border: 'border-blue-400 hover:border-blue-500',
-    text: 'text-zinc-900',
+    text: 'text-white',
     bg: 'bg-white/70',
     shadow: 'shadow-zinc-200/50'
   },
   'chismes': {
     border: 'border-pink-400 hover:border-pink-500',
-    text: 'text-zinc-900',
+    text: 'text-white',
     bg: 'bg-white/70',
     shadow: 'shadow-zinc-200/50'
   },
   'descargos': {
     border: 'border-red-400 hover:border-red-500',
-    text: 'text-zinc-900',
+    text: 'text-white',
     bg: 'bg-white/70',
     shadow: 'shadow-zinc-200/50'
   },
   'factos': {
     border: 'border-cyan-400 hover:border-cyan-500',
-    text: 'text-zinc-900',
+    text: 'text-white',
     bg: 'bg-white/70',
     shadow: 'shadow-zinc-200/50'
   },
   'red-flags': {
     border: 'border-orange-400 hover:border-orange-500',
-    text: 'text-zinc-900',
+    text: 'text-white',
     bg: 'bg-white/70',
     shadow: 'shadow-zinc-200/50'
   },
   'green-flags': {
     border: 'border-green-400 hover:border-green-500',
-    text: 'text-zinc-900',
+    text: 'text-white',
     bg: 'bg-white/70',
     shadow: 'shadow-zinc-200/50'
   },
   'paranormal': {
     border: 'border-slate-400 hover:border-slate-500',
-    text: 'text-zinc-900',
+    text: 'text-white',
     bg: 'bg-white/70',
     shadow: 'shadow-zinc-200/50'
   },
   'picante': {
     border: 'border-amber-400 hover:border-amber-500',
-    text: 'text-zinc-900',
+    text: 'text-white',
     bg: 'bg-white/70',
     shadow: 'shadow-zinc-200/50'
   }
