@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-fredoka), sans-serif;
+  
+  --color-dark-bg: #0d111d;
+  --color-dark-card: #161c2d;
+  --color-dark-border: #242f47;
+  
+  --color-accent-purple: #a78bfa;
+  --color-accent-emerald: #34d399;
+  --color-accent-rose: #fb7185;
+  --color-accent-cyan: #22d3ee;
+  --color-accent-amber: #fbbf24;
+  --color-accent-indigo: #818cf8;
+  --color-accent-orange: #fb923c;
+  --color-accent-pink: #f472b6;
+
+  --animate-bounce-little: bounce-little 2s infinite ease-in-out;
+  --animate-pop-in: pop-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+
+  @keyframes bounce-little {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+
+  @keyframes pop-in {
+    0% { transform: scale(0.92); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+}
+
+/* Base custom styles for playful comic book style */
+:root {
+  --background: #0b0e17;
+  --foreground: #f4f6fa;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-fredoka), sans-serif;
+  overflow-x: hidden;
+}
+
+/* Comic bubble/card style */
+.comic-card {
+  background: #151a26;
+  border: 2px solid #232d42;
+  box-shadow: 4px 4px 0px 0px #080a10;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.comic-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px 0px #080a10;
+  border-color: #3b4d70;
+}
+
+.comic-bubble {
+  position: relative;
+  background: #1d2436;
+  border: 2px solid #2e3a57;
+  border-radius: 1.25rem;
+}
+
+/* Rounded inputs and buttons */
+input, textarea, select {
+  font-family: var(--font-fredoka), sans-serif;
+}
+
+/* Playful gradients */
+.comic-text-glow {
+  background: linear-gradient(135deg, #fbbf24 0%, #fb7185 50%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.comic-glow-orange {
+  box-shadow: 0 0 15px rgba(251, 146, 60, 0.2);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0b0e17;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #232d42;
+  border-radius: 9999px;
+  border: 2px solid #0b0e17;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2e3a57;
+}
