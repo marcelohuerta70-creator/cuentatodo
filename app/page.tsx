@@ -4,6 +4,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { MOCK_EMOJIS_ACCENTS } from '@/utils/mockData';
 import { getAllCategorias } from '@/services/categorias.service';
+import { Categoria } from '@/types';
 
 export const metadata = {
   title: 'CuentaTodo - Comparte Historias, Confesiones y Chistes Anónimamente',
@@ -11,7 +12,13 @@ export const metadata = {
 };
 
 export default async function Home() {
-  const categorias = await getAllCategorias();
+  let categorias: Categoria[] = [];
+  try {
+    categorias = await getAllCategorias();
+  } catch (err) {
+    console.error('Error loading categories:', err);
+    categorias = [];
+  }
   return (
     <>
       <Header />
@@ -69,7 +76,13 @@ export default async function Home() {
         </div>
 
         {/* Categories Grid */}
-        <section className="w-full max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <section className="w-full max-w-6xl">
+          {categorias.length === 0 ? (
+            <div className="text-center py-12 bg-zinc-900/50 border border-zinc-800 rounded-lg">
+              <p className="text-zinc-400">Cargando categorías...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {categorias.map((cat, index) => {
             const styles = MOCK_EMOJIS_ACCENTS[cat.slug] || {
               border: 'border-zinc-800',
@@ -110,6 +123,8 @@ export default async function Home() {
               </Link>
             );
           })}
+            </div>
+          )}
         </section>
 
         {/* TODO: Publicidad - AdSense Leaderboard (728x90 o 970x90) */}
