@@ -3,23 +3,22 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LogOut, Trash2, MessageSquare } from 'lucide-react';
+import { LogOut, Trash2, FileText } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { supabase } from '@/lib/supabase';
-import { Comentario, Publicacion } from '@/types';
+import { Publicacion, Categoria } from '@/types';
 
-interface ComentarioConPublicacion extends Comentario {
-  publicacion?: Publicacion;
+interface PublicacionConCategoria extends Publicacion {
+  categoria?: Categoria;
 }
 
 export default function AdminPage() {
   const router = useRouter();
   const [adminEmail, setAdminEmail] = React.useState<string | null>(null);
-  const [comentarios, setComentarios] = React.useState<ComentarioConPublicacion[]>([]);
+  const [publicaciones, setPublicaciones] = React.useState<PublicacionConCategoria[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [deleting, setDeleting] = React.useState<string | null>(null);
-  const [filter, setFilter] = React.useState<'all' | 'pending'>('all');
 
   React.useEffect(() => {
     const email = localStorage.getItem('admin_email');
@@ -29,10 +28,10 @@ export default function AdminPage() {
     }
 
     setAdminEmail(email);
-    loadComentarios();
+    loadPublicaciones();
   }, [router]);
 
-  const loadComentarios = async () => {
+  const loadPublicaciones = async () => {
     try {
       setLoading(true);
 
@@ -41,36 +40,39 @@ export default function AdminPage() {
         return;
       }
 
-      const { data: comentariosData, error } = await supabase
-        .from('comentarios')
+      const { data: pubsData, error } = await supabase
+        .from('publicaciones')
         .select(`
           id,
-          publicacion_id,
+          categoria_id,
+          titulo,
+          contenido,
           nombre,
-          comentario,
+          anonimo,
+          slug,
           fecha
         `)
         .order('fecha', { ascending: false });
 
       if (error) {
-        console.error('Error loading comments:', error);
+        console.error('Error loading publications:', error);
         return;
       }
 
-      // Cargar publicaciones para mostrar contexto
-      if (comentariosData && comentariosData.length > 0) {
-        const pubIds = [...new Set(comentariosData.map(c => c.publicacion_id))];
-        const { data: pubsData } = await supabase
-          .from('publicaciones')
-          .select('id, titulo, slug, categoria_id')
-          .in('id', pubIds);
+      // Cargar categorías
+      if (pubsData && pubsData.length > 0) {
+        const catIds = [...new Set(pubsData.map(p => p.categoria_id))];
+        const { data: catsData } = await supabase
+          .from('categorias')
+          .select('id, nombre, slug')
+          .in('id', catIds);
 
-        const comentariosConPubs = comentariosData.map(c => ({
-          ...c,
-          publicacion: pubsData?.find(p => p.id === c.publicacion_id),
+        const pubsConCats = pubsData.map(pub => ({
+          ...pub,
+          categoria: catsData?.find(c => c.id === pub.categoria_id),
         }));
 
-        setComentarios(comentariosConPubs as ComentarioConPublicacion[]);
+        setPublicaciones(pubsConCats as PublicacionConCategoria[]);
       }
     } catch (err) {
       console.error('Error:', err);
@@ -79,23 +81,29 @@ export default function AdminPage() {
     }
   };
 
-  const handleDeleteComentario = async (comentarioId: string) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar este comentario?')) {
+  const handleDeletePublicacion = async (pubId: string) => {
+    if (!window.confirm('¿Estás seguro de que quieres eliminar esta publicación?')) {
       return;
     }
 
     try {
-      setDeleting(comentarioId);
-      const response = await fetch('/api/admin/delete-comment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comentarioId, email: adminEmail }),
-      });
+      setDeleting(pubId);
 
-      if (response.ok) {
-        setComentarios(comentarios.filter(c => c.id !== comentarioId));
+      if (!supabase) {
+        alert('Error: Supabase no está configurado');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('publicaciones')
+        .delete()
+        .eq('id', pubId);
+
+      if (error) {
+        alert('Error al eliminar');
+        console.error(error);
       } else {
-        alert('Error al eliminar comentario');
+        setPublicaciones(publicaciones.filter(p => p.id !== pubId));
       }
     } finally {
       setDeleting(null);
@@ -119,8 +127,8 @@ export default function AdminPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Panel Admin</h1>
-            <p className="text-zinc-400 mt-1">Bienvenido, {adminEmail}</p>
+            <h1 className="text-3xl font-bold text-white">Panel de Moderación</h1>
+            <p className="text-zinc-400 mt-1">Administra el contenido de CuentaTodo</p>
           </div>
           <button
             onClick={handleLogout}
@@ -135,77 +143,80 @@ export default function AdminPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
           <div className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg">
             <div className="flex items-center gap-3">
-              <MessageSquare size={24} className="text-amber-400" />
+              <FileText size={24} className="text-amber-400" />
               <div>
-                <p className="text-zinc-400 text-sm">Total de comentarios</p>
-                <p className="text-2xl font-bold text-white">{comentarios.length}</p>
+                <p className="text-zinc-400 text-sm">Total de publicaciones</p>
+                <p className="text-2xl font-bold text-white">{publicaciones.length}</p>
               </div>
             </div>
           </div>
           <div className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg">
             <div>
-              <p className="text-zinc-400 text-sm mb-2">Filtrar por:</p>
-              <select
-                value={filter}
-                onChange={(e) => setFilter(e.target.value as 'all' | 'pending')}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white"
-              >
-                <option value="all">Todos los comentarios</option>
-                <option value="pending">Pendientes de revisión</option>
-              </select>
+              <p className="text-zinc-400 text-sm mb-2">Última actualización</p>
+              <p className="text-sm text-zinc-300">
+                {publicaciones.length > 0
+                  ? new Date(publicaciones[0].fecha).toLocaleDateString()
+                  : 'Sin publicaciones'}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Comments List */}
+        {/* Publications List */}
         <div className="space-y-4">
-          <h2 className="text-xl font-bold text-white">Comentarios</h2>
+          <h2 className="text-xl font-bold text-white">Publicaciones a Moderar</h2>
 
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-              <p className="text-zinc-400">Cargando comentarios...</p>
+              <p className="text-zinc-400">Cargando publicaciones...</p>
             </div>
-          ) : comentarios.length === 0 ? (
+          ) : publicaciones.length === 0 ? (
             <div className="text-center py-12 bg-zinc-900/50 border border-zinc-800 rounded-lg">
-              <p className="text-zinc-400">No hay comentarios</p>
+              <p className="text-zinc-400">No hay publicaciones</p>
             </div>
           ) : (
-            comentarios.map((comentario) => (
+            publicaciones.map((pub) => (
               <div
-                key={comentario.id}
-                className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg hover:border-zinc-700 transition"
+                key={pub.id}
+                className="p-6 bg-zinc-900/50 border border-zinc-800 rounded-lg hover:border-zinc-700 transition"
               >
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-white">
-                      {comentario.publicacion?.titulo || 'Publicación eliminada'}
-                    </h3>
-                    <p className="text-xs text-zinc-500 mt-1">
-                      Por: {comentario.nombre || 'Anónimo'} •{' '}
-                      {new Date(comentario.fecha).toLocaleDateString()}
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-1 bg-zinc-800 rounded text-xs text-zinc-300 font-medium">
+                        {pub.categoria?.nombre || 'Categoría desconocida'}
+                      </span>
+                      <span className="text-xs text-zinc-500">
+                        {new Date(pub.fecha).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-bold text-white mb-2">{pub.titulo}</h3>
+                    <p className="text-zinc-300 text-sm leading-relaxed mb-3">{pub.contenido}</p>
+                    <p className="text-xs text-zinc-500">
+                      Por: {pub.anonimo ? 'Anónimo' : pub.nombre || 'Anónimo'}
                     </p>
                   </div>
-                  {comentario.publicacion && (
-                    <Link
-                      href={`/${comentario.publicacion.categoria_id}/${comentario.publicacion.slug}`}
-                      className="text-xs text-amber-400 hover:text-amber-300 transition ml-4"
-                    >
-                      Ver publicación →
-                    </Link>
-                  )}
                 </div>
 
-                <p className="text-zinc-300 mb-4 leading-relaxed">{comentario.comentario}</p>
-
-                <button
-                  onClick={() => handleDeleteComentario(comentario.id)}
-                  disabled={deleting === comentario.id}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-lg text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Trash2 size={16} />
-                  {deleting === comentario.id ? 'Eliminando...' : 'Eliminar'}
-                </button>
+                <div className="flex items-center gap-2">
+                  {pub.categoria && (
+                    <Link
+                      href={`/${pub.categoria.slug}/${pub.slug}`}
+                      className="text-xs text-amber-400 hover:text-amber-300 transition"
+                    >
+                      Ver en la app →
+                    </Link>
+                  )}
+                  <button
+                    onClick={() => handleDeletePublicacion(pub.id)}
+                    disabled={deleting === pub.id}
+                    className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-lg text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Trash2 size={16} />
+                    {deleting === pub.id ? 'Eliminando...' : 'Eliminar'}
+                  </button>
+                </div>
               </div>
             ))
           )}
