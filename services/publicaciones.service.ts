@@ -4,6 +4,8 @@ import { Publicacion, PublicacionConDetalles } from '@/types';
 export async function getPublicacionesByCategoria(
   categoriaId: string
 ): Promise<PublicacionConDetalles[]> {
+  if (!supabase) return [];
+
   const { data: publicaciones, error } = await supabase
     .from('publicaciones')
     .select('*')
@@ -34,6 +36,8 @@ export async function getPublicacionesByCategoria(
 }
 
 export async function getPublicacionBySlug(slug: string): Promise<PublicacionConDetalles | null> {
+  if (!supabase) return null;
+
   const { data, error } = await supabase
     .from('publicaciones')
     .select('*')
@@ -61,6 +65,8 @@ export async function getPublicacionBySlug(slug: string): Promise<PublicacionCon
 export async function getUltimasPublicaciones(
   limit: number = 3
 ): Promise<PublicacionConDetalles[]> {
+  if (!supabase) return [];
+
   const { data: publicaciones, error } = await supabase
     .from('publicaciones')
     .select('*')
@@ -92,6 +98,8 @@ export async function getUltimasPublicaciones(
 export async function crearPublicacion(
   input: Omit<Publicacion, 'id' | 'fecha'>
 ): Promise<Publicacion | null> {
+  if (!supabase) return null;
+
   const { data, error } = await supabase
     .from('publicaciones')
     .insert([input])
@@ -107,6 +115,8 @@ export async function crearPublicacion(
 }
 
 async function getComentariosCount(publicacionId: string): Promise<number> {
+  if (!supabase) return 0;
+
   const { count, error } = await supabase
     .from('comentarios')
     .select('*', { count: 'exact', head: true })
@@ -123,6 +133,8 @@ async function getComentariosCount(publicacionId: string): Promise<number> {
 async function getReaccionesCount(
   publicacionId: string
 ): Promise<{ count: Record<string, number>; total: number }> {
+  if (!supabase) return { count: {}, total: 0 };
+
   const { data, error } = await supabase
     .from('reacciones')
     .select('tipo')

@@ -35,6 +35,12 @@ export default function AdminPage() {
   const loadComentarios = async () => {
     try {
       setLoading(true);
+
+      if (!supabase) {
+        console.error('Supabase not initialized');
+        return;
+      }
+
       const { data: comentariosData, error } = await supabase
         .from('comentarios')
         .select(`

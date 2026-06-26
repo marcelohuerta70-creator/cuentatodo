@@ -4,6 +4,8 @@ import { Reaccion } from '@/types';
 export async function getReaccionesByPublicacion(
   publicacionId: string
 ): Promise<Reaccion[]> {
+  if (!supabase) return [];
+
   const { data, error } = await supabase
     .from('reacciones')
     .select('*')
@@ -20,6 +22,8 @@ export async function getReaccionesByPublicacion(
 export async function crearReaccion(
   input: Omit<Reaccion, 'id' | 'fecha'>
 ): Promise<Reaccion | null> {
+  if (!supabase) return null;
+
   const { data, error } = await supabase
     .from('reacciones')
     .insert([input])
@@ -37,6 +41,8 @@ export async function crearReaccion(
 export async function getReaccionesCount(
   publicacionId: string
 ): Promise<Record<string, number>> {
+  if (!supabase) return {};
+
   const { data, error } = await supabase
     .from('reacciones')
     .select('tipo')

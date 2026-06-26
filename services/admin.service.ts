@@ -1,6 +1,11 @@
 import { supabase } from '@/lib/supabase';
 
 export async function deleteComentario(comentarioId: string): Promise<boolean> {
+  if (!supabase) {
+    console.error('Supabase not initialized');
+    return false;
+  }
+
   const { error } = await supabase
     .from('comentarios')
     .delete()
@@ -15,6 +20,11 @@ export async function deleteComentario(comentarioId: string): Promise<boolean> {
 }
 
 export async function isAdmin(email: string): Promise<boolean> {
+  if (!supabase) {
+    console.error('Supabase not initialized');
+    return false;
+  }
+
   const { data, error } = await (supabase as any)
     .from('admins')
     .select('email')

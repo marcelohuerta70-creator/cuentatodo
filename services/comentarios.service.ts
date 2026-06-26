@@ -4,6 +4,8 @@ import { Comentario } from '@/types';
 export async function getComentariosByPublicacion(
   publicacionId: string
 ): Promise<Comentario[]> {
+  if (!supabase) return [];
+
   const { data, error } = await supabase
     .from('comentarios')
     .select('*')
@@ -21,6 +23,8 @@ export async function getComentariosByPublicacion(
 export async function crearComentario(
   input: Omit<Comentario, 'id' | 'fecha'>
 ): Promise<Comentario | null> {
+  if (!supabase) return null;
+
   const { data, error } = await supabase
     .from('comentarios')
     .insert([input])
