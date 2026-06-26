@@ -3,21 +3,27 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LogOut, Trash2, FileText } from 'lucide-react';
+import { LogOut, Trash2, ChevronDown, ChevronRight, MessageSquare } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { supabase } from '@/lib/supabase';
-import { Publicacion, Categoria } from '@/types';
+import { Publicacion, Categoria, Comentario } from '@/types';
 
-interface PublicacionConCategoria extends Publicacion {
-  categoria?: Categoria;
+interface PublicacionConComentarios extends Publicacion {
+  comentarios?: Comentario[];
+}
+
+interface CategoriaConPublicaciones extends Categoria {
+  publicaciones?: PublicacionConComentarios[];
 }
 
 export default function AdminPage() {
   const router = useRouter();
   const [adminEmail, setAdminEmail] = React.useState<string | null>(null);
-  const [publicaciones, setPublicaciones] = React.useState<PublicacionConCategoria[]>([]);
+  const [categorias, setCategorias] = React.useState<CategoriaConPublicaciones[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [expandedCats, setExpandedCats] = React.useState<Set<string>>(new Set());
+  const [expandedPubs, setExpandedPubs] = React.useState<Set<string>>(new Set());
   const [deleting, setDeleting] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -28,10 +34,10 @@ export default function AdminPage() {
     }
 
     setAdminEmail(email);
-    loadPublicaciones();
+    loadData();
   }, [router]);
 
-  const loadPublicaciones = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
 
@@ -40,71 +46,123 @@ export default function AdminPage() {
         return;
       }
 
-      const { data: pubsData, error } = await supabase
-        .from('publicaciones')
-        .select(`
-          id,
-          categoria_id,
-          titulo,
-          contenido,
-          nombre,
-          anonimo,
-          slug,
-          fecha
-        `)
-        .order('fecha', { ascending: false });
-
-      if (error) {
-        console.error('Error loading publications:', error);
-        return;
-      }
-
       // Cargar categorías
-      if (pubsData && pubsData.length > 0) {
-        const catIds = [...new Set(pubsData.map(p => p.categoria_id))];
-        const { data: catsData } = await supabase
-          .from('categorias')
-          .select('id, nombre, slug')
-          .in('id', catIds);
+      const { data: catsData } = await supabase
+        .from('categorias')
+        .select('*')
+        .order('created_at', { ascending: true });
 
-        const pubsConCats = pubsData.map(pub => ({
-          ...pub,
-          categoria: catsData?.find(c => c.id === pub.categoria_id),
-        }));
+      if (!catsData) return;
 
-        setPublicaciones(pubsConCats as PublicacionConCategoria[]);
-      }
+      // Para cada categoría, cargar publicaciones
+      const catsConPubs = await Promise.all(
+        catsData.map(async (cat) => {
+          if (!supabase) return { ...cat, publicaciones: [] };
+
+          const { data: pubsData } = await supabase
+            .from('publicaciones')
+            .select('*')
+            .eq('categoria_id', cat.id)
+            .order('fecha', { ascending: false });
+
+          return {
+            ...cat,
+            publicaciones: pubsData || [],
+          };
+        })
+      );
+
+      setCategorias(catsConPubs as CategoriaConPublicaciones[]);
     } catch (err) {
-      console.error('Error:', err);
+      console.error('Error loading data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeletePublicacion = async (pubId: string) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar esta publicación?')) {
-      return;
+  const loadComentarios = async (pubId: string) => {
+    if (!supabase) return;
+
+    const { data: comentariosData } = await supabase
+      .from('comentarios')
+      .select('*')
+      .eq('publicacion_id', pubId)
+      .order('fecha', { ascending: true });
+
+    // Actualizar el estado
+    setCategorias((prevCats) =>
+      prevCats.map((cat) => ({
+        ...cat,
+        publicaciones: cat.publicaciones?.map((pub) =>
+          pub.id === pubId ? { ...pub, comentarios: comentariosData || [] } : pub
+        ),
+      }))
+    );
+  };
+
+  const toggleCategory = (catId: string) => {
+    const newExpanded = new Set(expandedCats);
+    if (newExpanded.has(catId)) {
+      newExpanded.delete(catId);
+    } else {
+      newExpanded.add(catId);
     }
+    setExpandedCats(newExpanded);
+  };
+
+  const togglePublication = (pubId: string) => {
+    const newExpanded = new Set(expandedPubs);
+    if (newExpanded.has(pubId)) {
+      newExpanded.delete(pubId);
+    } else {
+      newExpanded.add(pubId);
+      loadComentarios(pubId);
+    }
+    setExpandedPubs(newExpanded);
+  };
+
+  const handleDeletePublicacion = async (pubId: string) => {
+    if (!window.confirm('¿Eliminar esta publicación?')) return;
 
     try {
       setDeleting(pubId);
+      if (!supabase) return;
 
-      if (!supabase) {
-        alert('Error: Supabase no está configurado');
-        return;
-      }
+      await supabase.from('publicaciones').delete().eq('id', pubId);
 
-      const { error } = await supabase
-        .from('publicaciones')
-        .delete()
-        .eq('id', pubId);
+      setCategorias((prevCats) =>
+        prevCats.map((cat) => ({
+          ...cat,
+          publicaciones: cat.publicaciones?.filter((p) => p.id !== pubId),
+        }))
+      );
+    } finally {
+      setDeleting(null);
+    }
+  };
 
-      if (error) {
-        alert('Error al eliminar');
-        console.error(error);
-      } else {
-        setPublicaciones(publicaciones.filter(p => p.id !== pubId));
-      }
+  const handleDeleteComentario = async (comId: string, pubId: string) => {
+    if (!window.confirm('¿Eliminar este comentario?')) return;
+
+    try {
+      setDeleting(comId);
+      if (!supabase) return;
+
+      await supabase.from('comentarios').delete().eq('id', comId);
+
+      setCategorias((prevCats) =>
+        prevCats.map((cat) => ({
+          ...cat,
+          publicaciones: cat.publicaciones?.map((pub) =>
+            pub.id === pubId
+              ? {
+                  ...pub,
+                  comentarios: pub.comentarios?.filter((c) => c.id !== comId),
+                }
+              : pub
+          ),
+        }))
+      );
     } finally {
       setDeleting(null);
     }
@@ -116,111 +174,127 @@ export default function AdminPage() {
     router.push('/admin/login');
   };
 
-  if (!adminEmail) {
-    return null;
-  }
+  if (!adminEmail) return null;
 
   return (
     <>
       <Header />
       <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white">Panel de Moderación</h1>
-            <p className="text-zinc-400 mt-1">Administra el contenido de CuentaTodo</p>
+            <p className="text-zinc-400 mt-1">Gestiona publicaciones y comentarios</p>
           </div>
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg transition"
           >
             <LogOut size={18} />
-            <span>Cerrar sesión</span>
+            Cerrar sesión
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <div className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg">
-            <div className="flex items-center gap-3">
-              <FileText size={24} className="text-amber-400" />
-              <div>
-                <p className="text-zinc-400 text-sm">Total de publicaciones</p>
-                <p className="text-2xl font-bold text-white">{publicaciones.length}</p>
-              </div>
-            </div>
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+            <p className="text-zinc-400">Cargando...</p>
           </div>
-          <div className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg">
-            <div>
-              <p className="text-zinc-400 text-sm mb-2">Última actualización</p>
-              <p className="text-sm text-zinc-300">
-                {publicaciones.length > 0
-                  ? new Date(publicaciones[0].fecha).toLocaleDateString()
-                  : 'Sin publicaciones'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Publications List */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold text-white">Publicaciones a Moderar</h2>
-
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-              <p className="text-zinc-400">Cargando publicaciones...</p>
-            </div>
-          ) : publicaciones.length === 0 ? (
-            <div className="text-center py-12 bg-zinc-900/50 border border-zinc-800 rounded-lg">
-              <p className="text-zinc-400">No hay publicaciones</p>
-            </div>
-          ) : (
-            publicaciones.map((pub) => (
-              <div
-                key={pub.id}
-                className="p-6 bg-zinc-900/50 border border-zinc-800 rounded-lg hover:border-zinc-700 transition"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="px-2 py-1 bg-zinc-800 rounded text-xs text-zinc-300 font-medium">
-                        {pub.categoria?.nombre || 'Categoría desconocida'}
-                      </span>
-                      <span className="text-xs text-zinc-500">
-                        {new Date(pub.fecha).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-bold text-white mb-2">{pub.titulo}</h3>
-                    <p className="text-zinc-300 text-sm leading-relaxed mb-3">{pub.contenido}</p>
-                    <p className="text-xs text-zinc-500">
-                      Por: {pub.anonimo ? 'Anónimo' : pub.nombre || 'Anónimo'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {pub.categoria && (
-                    <Link
-                      href={`/${pub.categoria.slug}/${pub.slug}`}
-                      className="text-xs text-amber-400 hover:text-amber-300 transition"
-                    >
-                      Ver en la app →
-                    </Link>
+        ) : (
+          <div className="space-y-4">
+            {categorias.map((cat) => (
+              <div key={cat.id} className="border border-zinc-800 rounded-lg overflow-hidden">
+                {/* Categoría */}
+                <button
+                  onClick={() => toggleCategory(cat.id)}
+                  className="w-full flex items-center gap-3 p-4 bg-zinc-900/50 hover:bg-zinc-900/70 transition text-left"
+                >
+                  {expandedCats.has(cat.id) ? (
+                    <ChevronDown size={20} className="text-amber-400" />
+                  ) : (
+                    <ChevronRight size={20} className="text-zinc-500" />
                   )}
-                  <button
-                    onClick={() => handleDeletePublicacion(pub.id)}
-                    disabled={deleting === pub.id}
-                    className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-lg text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Trash2 size={16} />
-                    {deleting === pub.id ? 'Eliminando...' : 'Eliminar'}
-                  </button>
-                </div>
+                  <span className="font-bold text-white flex-1">{cat.nombre}</span>
+                  <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-400">
+                    {cat.publicaciones?.length || 0} publs
+                  </span>
+                </button>
+
+                {/* Publicaciones */}
+                {expandedCats.has(cat.id) && (
+                  <div className="border-t border-zinc-800 bg-zinc-950/50 space-y-2 p-4">
+                    {(!cat.publicaciones || cat.publicaciones.length === 0) ? (
+                      <p className="text-zinc-500 text-sm">Sin publicaciones</p>
+                    ) : (
+                      cat.publicaciones.map((pub) => (
+                        <div key={pub.id} className="border border-zinc-800 rounded bg-zinc-900/50">
+                          {/* Publicación */}
+                          <button
+                            onClick={() => togglePublication(pub.id)}
+                            className="w-full flex items-start gap-3 p-3 hover:bg-zinc-900 transition text-left"
+                          >
+                            {expandedPubs.has(pub.id) ? (
+                              <ChevronDown size={18} className="text-amber-400 mt-1 flex-shrink-0" />
+                            ) : (
+                              <ChevronRight size={18} className="text-zinc-500 mt-1 flex-shrink-0" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-white truncate">{pub.titulo}</h4>
+                              <p className="text-xs text-zinc-500 mt-1">
+                                {pub.anonimo ? 'Anónimo' : pub.nombre || 'Anónimo'}
+                              </p>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeletePublicacion(pub.id);
+                              }}
+                              disabled={deleting === pub.id}
+                              className="flex-shrink-0 p-1 text-red-400 hover:text-red-300 disabled:opacity-50"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </button>
+
+                          {/* Comentarios */}
+                          {expandedPubs.has(pub.id) && (
+                            <div className="border-t border-zinc-800 bg-zinc-950 p-3 space-y-2">
+                              {!pub.comentarios || pub.comentarios.length === 0 ? (
+                                <p className="text-zinc-600 text-xs">Sin comentarios</p>
+                              ) : (
+                                pub.comentarios.map((com) => (
+                                  <div
+                                    key={com.id}
+                                    className="bg-zinc-800/50 p-2 rounded flex items-start gap-2 group"
+                                  >
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-semibold text-zinc-300">
+                                        {com.nombre || 'Anónimo'}
+                                      </p>
+                                      <p className="text-xs text-zinc-400 mt-1 break-words">
+                                        {com.comentario}
+                                      </p>
+                                    </div>
+                                    <button
+                                      onClick={() => handleDeleteComentario(com.id, pub.id)}
+                                      disabled={deleting === com.id}
+                                      className="flex-shrink-0 p-1 text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </main>
       <Footer />
     </>
