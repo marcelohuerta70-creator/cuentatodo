@@ -105,3 +105,23 @@ CREATE POLICY "Permitir lectura publica de reacciones" ON reacciones
 
 CREATE POLICY "Permitir creacion publica de reacciones" ON reacciones
   FOR INSERT WITH CHECK (true);
+
+-- 7. ADMIN TABLE
+CREATE TABLE admins (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Admin policies
+CREATE POLICY "Admin can delete comments" ON comentarios
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM admins
+      WHERE admins.email = auth.email()
+    )
+  );
+
+-- Insert admin user (cuentatodo@gmail.com)
+INSERT INTO admins (email) VALUES ('cuentatodo@gmail.com')
+ON CONFLICT (email) DO NOTHING;
