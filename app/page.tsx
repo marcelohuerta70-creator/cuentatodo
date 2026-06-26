@@ -1,24 +1,20 @@
+'use client';
+
+import * as React from 'react';
 import Link from 'next/link';
 import { Flame, MessageSquare, ShieldCheck, Sparkles, TrendingUp, ArrowRight } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { MOCK_EMOJIS_ACCENTS } from '@/utils/mockData';
-import { getAllCategorias } from '@/services/categorias.service';
+import { MOCK_EMOJIS_ACCENTS, MOCK_CATEGORIAS } from '@/utils/mockData';
 import { Categoria } from '@/types';
 
-export const metadata = {
-  title: 'CuentaTodo - Comparte Historias, Confesiones y Chistes Anónimamente',
-  description: 'Una plataforma pública y rápida para compartir lo que quieras sin registro. El contenido es el protagonista.',
-};
+export default function Home() {
+  const [categorias, setCategorias] = React.useState<Categoria[]>(MOCK_CATEGORIAS);
+  const [loading, setLoading] = React.useState(true);
 
-export default async function Home() {
-  let categorias: Categoria[] = [];
-  try {
-    categorias = await getAllCategorias();
-  } catch (err) {
-    console.error('Error loading categories:', err);
-    categorias = [];
-  }
+  React.useEffect(() => {
+    setLoading(false);
+  }, []);
   return (
     <>
       <Header />
